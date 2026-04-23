@@ -90,6 +90,7 @@ export async function runAgent(targetToken: string): Promise<AgentResult> {
         model: openai(config.llmModel),
         tools: tracedTools,
         maxSteps: 5,
+        abortSignal: AbortSignal.timeout(5000),
         system: `You are a Solana DeFi research agent.
 Your job is to research a token and assess whether a 1 SOL swap makes sense right now.
 
@@ -111,6 +112,7 @@ A missing route is useful information, not an error.`,
 
       const summaryResult = await generateText({
         model: openai(config.llmModel),
+        abortSignal: AbortSignal.timeout(5000),
         system:
           "You write very short, plain English summaries for non-technical users. Max 2 sentences. No jargon.",
         messages: [
