@@ -6,6 +6,27 @@ This is a standalone test agent for Mortem. It analyzes a Solana token using Pyt
 
 Every step is traced by Mortem so developers can inspect realistic `llm_call`, `tool_call`, and `solana_tx` events in the dashboard.
 
+## LLM providers
+
+OpenAI is the default provider:
+
+```bash
+LLM_PROVIDER=openai
+LLM_MODEL=gpt-4o-mini
+OPENAI_API_KEY=your_openai_api_key
+```
+
+Ollama Cloud is also supported through the official Ollama JavaScript SDK:
+
+```bash
+LLM_PROVIDER=ollama
+LLM_MODEL=gpt-oss:120b
+OLLAMA_API_KEY=your_ollama_api_key
+OLLAMA_HOST=https://ollama.com
+```
+
+The Ollama path runs the same price, quote, and assessment tools. If the model does not request a required tool call itself, the agent executes the missing tool deterministically so the run still exercises the complete research flow.
+
 ## Setup
 
 1. Clone the repo.
