@@ -8,6 +8,8 @@ import { runAgent } from "./agent.js"
 console.log("\n🔍 Mortem test agent starting...")
 console.log(`   Target token: ${config.targetToken}`)
 console.log(`   Agent ID:     ${config.mortemAgentId}`)
+console.log(`   LLM provider: ${config.llmProvider}`)
+console.log(`   LLM model:    ${config.llmModel}`)
 console.log(`   Devnet tx:    ${config.sendDevnetTx}\n`)
 
 runAgent(config.targetToken)
