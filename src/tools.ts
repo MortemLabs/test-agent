@@ -8,6 +8,55 @@ import { fetchPythPrice } from "./pyth.js"
 
 type TradeVerdict = "no_route" | "high_impact" | "acceptable" | "favorable"
 
+export interface AssessTradeInput {
+  token: string
+  current_price_usd: number
+  price_impact_pct: number
+  has_route: boolean
+  amount_sol: number
+}
+
+export interface AssessTradeOutput {
+  token: string
+  verdict: TradeVerdict
+  price_usd: number
+  price_impact_pct: number
+  has_route: boolean
+  amount_sol: number
+  reason: string
+}
+
+export function assessTrade({
+  token,
+  current_price_usd,
+  price_impact_pct,
+  has_route,
+  amount_sol,
+}: AssessTradeInput): AssessTradeOutput {
+  const verdict: TradeVerdict = !has_route
+    ? "no_route"
+    : price_impact_pct > 2
+      ? "high_impact"
+      : price_impact_pct > 0.5
+        ? "acceptable"
+        : "favorable"
+
+  return {
+    token,
+    verdict,
+    price_usd: current_price_usd,
+    price_impact_pct,
+    has_route,
+    amount_sol,
+    reason:
+      verdict === "no_route"
+        ? "Jupiter has no route for this token"
+        : verdict === "high_impact"
+          ? `Price impact ${price_impact_pct.toFixed(2)}% is too high`
+          : `Trade looks ${verdict}`,
+  }
+}
+
 export const tools = {
   get_token_price: tool({
     description: "Get the current USD price of a Solana token from Pyth oracle",
@@ -57,35 +106,13 @@ export const tools = {
       has_route: z.boolean(),
       amount_sol: z.number(),
     }),
-    execute: async ({
-      token,
-      current_price_usd,
-      price_impact_pct,
-      has_route,
-      amount_sol,
-    }) => {
-      const verdict: TradeVerdict = !has_route
-        ? "no_route"
-        : price_impact_pct > 2
-          ? "high_impact"
-          : price_impact_pct > 0.5
-            ? "acceptable"
-            : "favorable"
-
-      return {
-        token,
-        verdict,
-        price_usd: current_price_usd,
-        price_impact_pct,
-        has_route,
-        amount_sol,
-        reason:
-          verdict === "no_route"
-            ? "Jupiter has no route for this token"
-            : verdict === "high_impact"
-              ? `Price impact ${price_impact_pct.toFixed(2)}% is too high`
-              : `Trade looks ${verdict}`,
-      }
-    },
+    execute: async (input) =>
+      assessTrade({
+        token: input.token,
+        current_price_usd: input.current_price_usd,
+        price_impact_pct: input.price_impact_pct,
+        has_route: input.has_route,
+        amount_sol: input.amount_sol,
+      }),
   }),
 }
