@@ -5,6 +5,7 @@ import { createOpenAI } from "@ai-sdk/openai"
 import { Mortem } from "@mortemlabs/sdk"
 import { generateText } from "ai"
 import { config } from "./config.js"
+import { runOllamaResearch, runOllamaSummary } from "./ollama.js"
 import { createConnection, loadKeypair, sendMemoTx } from "./solana.js"
 import { tools } from "./tools.js"
 
@@ -49,6 +50,14 @@ function extractVerdict(toolResults: ToolResultLike[] | undefined): string {
   return "unknown"
 }
 
+function getOpenAiApiKey(): string {
+  if (!config.openaiApiKey) {
+    throw new Error("OPENAI_API_KEY is required when LLM_PROVIDER=openai")
+  }
+
+  return config.openaiApiKey
+}
+
 export async function runAgent(targetToken: string): Promise<AgentResult> {
   const mortem = new Mortem({
     apiKey: config.mortemApiKey,
@@ -62,21 +71,26 @@ export async function runAgent(targetToken: string): Promise<AgentResult> {
     inputSummary: `Analyze ${targetToken} - should I swap?`,
   })
 
-  const openaiClient = createOpenAI({
-    apiKey: config.openaiApiKey,
-  })
-  const openai = mortem.wrapOpenAI(openaiClient)
   const tracedTools = mortem.wrapTools(tools)
 
   const connection = mortem.wrapConnection(createConnection())
   const keypair = loadKeypair()
 
   try {
-    const researchResult = (await generateText({
-      model: openai("gpt-4o-mini"),
-      tools: tracedTools,
-      maxSteps: 5,
-      system: `You are a Solana DeFi research agent.
+    let toolResults: ToolResultLike[] | undefined
+    let summary: string
+
+    if (config.llmProvider === "openai") {
+      const openaiClient = createOpenAI({
+        apiKey: getOpenAiApiKey(),
+      })
+      const openai = mortem.wrapOpenAI(openaiClient)
+
+      const researchResult = (await generateText({
+        model: openai(config.llmModel),
+        tools: tracedTools,
+        maxSteps: 5,
+        system: `You are a Solana DeFi research agent.
 Your job is to research a token and assess whether a 1 SOL swap makes sense right now.
 
 Steps you must follow:
@@ -87,27 +101,35 @@ Steps you must follow:
 
 Always complete all steps even if a route is not available.
 A missing route is useful information, not an error.`,
-      messages: [
-        {
-          role: "user",
-          content: `Research ${targetToken}. Should I swap 1 SOL for ${targetToken} right now?`,
-        },
-      ],
-    })) as GenerateTextWithToolResults
+        messages: [
+          {
+            role: "user",
+            content: `Research ${targetToken}. Should I swap 1 SOL for ${targetToken} right now?`,
+          },
+        ],
+      })) as GenerateTextWithToolResults
 
-    const summaryResult = await generateText({
-      model: openai("gpt-4o-mini"),
-      system:
-        "You write very short, plain English summaries for non-technical users. Max 2 sentences. No jargon.",
-      messages: [
-        {
-          role: "user",
-          content: `Summarize this trading analysis in 2 sentences: ${researchResult.text}`,
-        },
-      ],
-    })
+      const summaryResult = await generateText({
+        model: openai(config.llmModel),
+        system:
+          "You write very short, plain English summaries for non-technical users. Max 2 sentences. No jargon.",
+        messages: [
+          {
+            role: "user",
+            content: `Summarize this trading analysis in 2 sentences: ${researchResult.text}`,
+          },
+        ],
+      })
 
-    const verdict = extractVerdict(researchResult.toolResults)
+      toolResults = researchResult.toolResults
+      summary = summaryResult.text
+    } else {
+      const researchResult = await runOllamaResearch(targetToken)
+      toolResults = researchResult.toolResults
+      summary = await runOllamaSummary(researchResult.text)
+    }
+
+    const verdict = extractVerdict(toolResults)
     if (verdict === "no_route") {
       throw new Error(`market_condition:no_route:${targetToken}`)
     }
@@ -131,7 +153,7 @@ A missing route is useful information, not an error.`,
     return {
       token: targetToken,
       verdict,
-      summary: summaryResult.text,
+      summary,
       txSignature,
       traceId: session.traceId,
       shareUrl: session.shareUrl,
