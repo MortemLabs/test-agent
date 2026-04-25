@@ -1,6 +1,9 @@
 // Fetches read-only swap quotes from Jupiter for price discovery.
 // The agent never submits swaps; failed quote responses become no-route data for Mortem failure classification.
 
+const JUPITER_API_BASE_URL = (process.env.JUPITER_API_BASE_URL ?? "https://api.jup.ag").replace(/\/$/, "")
+const JUPITER_API_KEY = process.env.JUPITER_API_KEY && process.env.JUPITER_API_KEY.length > 0 ? process.env.JUPITER_API_KEY : undefined
+
 const TOKEN_MINTS: Record<string, string> = {
   SOL: "So11111111111111111111111111111111111111112",
   JUP: "JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN",
@@ -40,7 +43,7 @@ export async function fetchJupiterQuote(
 
   const amount = Math.floor(amountSol * 1_000_000_000)
   const url =
-    "https://quote-api.jup.ag/v6/quote" +
+    `${JUPITER_API_BASE_URL}/swap/v1/quote` +
     `?inputMint=${inputMint}` +
     `&outputMint=${outputMint}` +
     `&amount=${amount}` +
@@ -58,6 +61,7 @@ export async function fetchJupiterQuote(
 
   const res = await fetch(url, {
     signal: AbortSignal.timeout(5000),
+    headers: JUPITER_API_KEY ? { "x-api-key": JUPITER_API_KEY } : undefined,
   })
 
   if (!res.ok) {

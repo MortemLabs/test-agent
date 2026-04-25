@@ -63,7 +63,7 @@ export async function runAgent(targetToken: string): Promise<AgentResult> {
     apiKey: config.mortemApiKey,
     agentId: config.mortemAgentId,
     verifyToken: config.mortemVerifyToken,
-    captureMarket: true,
+    ingestUrl: config.mortemIngestUrl,
     environment: "devnet",
   })
 
@@ -150,15 +150,17 @@ A missing route is useful information, not an error.`,
       )
     }
 
-    await session.end("success")
+    await session.end({ status: "completed" })
+    const traceId = session.id
+    const dashboardUrl = config.mortemDashboardUrl.replace(/\/+$/u, "")
 
     return {
       token: targetToken,
       verdict,
       summary,
       txSignature,
-      traceId: session.traceId,
-      shareUrl: session.shareUrl,
+      traceId,
+      shareUrl: `${dashboardUrl}/app/traces/${traceId}`,
     }
   } catch (err) {
     const error = toError(err)

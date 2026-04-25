@@ -9,9 +9,14 @@ interface Config {
   openaiApiKey?: string
   ollamaApiKey?: string
   ollamaHost: string
+  jupiterApiBaseUrl: string
+  jupiterApiKey?: string
+  ollamaTimeoutMs: number
   mortemApiKey: string
   mortemAgentId: string
   mortemVerifyToken: string
+  mortemIngestUrl?: string
+  mortemDashboardUrl: string
   solanaPrivateKey: string
   solanaRpcUrl: string
   targetToken: string
@@ -63,13 +68,20 @@ if (llmProvider === "ollama" && !ollamaApiKey) {
 
 export const config: Config = {
   llmProvider,
-  llmModel: process.env.LLM_MODEL ?? (llmProvider === "ollama" ? "gpt-oss:120b" : "gpt-4o-mini"),
+  llmModel:
+    process.env.LLM_MODEL ??
+    (llmProvider === "ollama" ? (process.env.OLLAMA_MODEL ?? "llama3.1") : "gpt-4o-mini"),
   openaiApiKey,
   ollamaApiKey,
   ollamaHost: process.env.OLLAMA_HOST ?? "https://ollama.com",
+  jupiterApiBaseUrl: process.env.JUPITER_API_BASE_URL ?? "https://api.jup.ag",
+  jupiterApiKey: getOptionalEnv("JUPITER_API_KEY"),
+  ollamaTimeoutMs: Number.parseInt(process.env.OLLAMA_TIMEOUT_MS ?? "20000", 10),
   mortemApiKey: getRequiredEnv("MORTEM_API_KEY"),
   mortemAgentId: getRequiredEnv("MORTEM_AGENT_ID"),
   mortemVerifyToken: getRequiredEnv("MORTEM_VERIFY_TOKEN"),
+  mortemIngestUrl: getOptionalEnv("MORTEM_INGEST_URL"),
+  mortemDashboardUrl: process.env.MORTEM_DASHBOARD_URL ?? "http://localhost:3000",
   solanaPrivateKey: getRequiredEnv("SOLANA_PRIVATE_KEY"),
   solanaRpcUrl: getRequiredEnv("SOLANA_RPC_URL"),
   targetToken: process.env.TARGET_TOKEN ?? "JUP",

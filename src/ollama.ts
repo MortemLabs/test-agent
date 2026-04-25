@@ -134,7 +134,7 @@ function createOllamaClient(): Ollama {
     headers: {
       Authorization: `Bearer ${apiKey}`,
     },
-    fetch: createTimeoutFetch(5000),
+    fetch: createTimeoutFetch(config.ollamaTimeoutMs),
   })
 }
 
